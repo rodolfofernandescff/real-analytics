@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import datetime, timedelta
 import pandas as pd
 import requests
@@ -11,6 +12,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 # Constantes das Séries do SGS
 SERIE_DOLAR_VENDA = 1
 SERIE_SELIC_META = 432
+
+_MAX_RETRIES = 3
+_HEADERS = {
+    "User-Agent": "RealAnalytics/1.0 (Portfolio Educacional; github.com/real-analytics)",
+    "Accept": "application/json",
+}
 
 def _chunk_dates(start_date: datetime, end_date: datetime, max_years: int = 3) -> list[tuple[datetime, datetime]]:
     """
@@ -32,40 +39,59 @@ def _chunk_dates(start_date: datetime, end_date: datetime, max_years: int = 3) -
 def _fetch_bcb_sgs_raw(series_code: int, start_date: datetime, end_date: datetime) -> pd.DataFrame:
     """
     Realiza a requisição direta para a API do BCB SGS para um intervalo específico.
+    Retenta automaticamente em caso de falha de rede ou timeout (backoff exponencial).
     """
     str_start = start_date.strftime("%d/%m/%Y")
     str_end = end_date.strftime("%d/%m/%Y")
-    url = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{series_code}/dados?formato=json&dataInicial={str_start}&dataFinal={str_end}"
-    
+    url = (
+        f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{series_code}/dados"
+        f"?formato=json&dataInicial={str_start}&dataFinal={str_end}"
+    )
+
     logger.info(f"Buscando série BCB {series_code} de {str_start} a {str_end}")
-    
-    try:
-        response = requests.get(url, timeout=15)
-        response.raise_for_status()
-        data = response.json()
-        
-        if not data:
-            logger.warning(f"Série {series_code} não retornou dados para o período {str_start} a {str_end}")
-            return pd.DataFrame(columns=["data", "valor"])
-            
-        df = pd.DataFrame(data)
-        return df
-    except requests.exceptions.HTTPError as e:
-        # Se for um erro 404 (Não Encontrado), significa que a série não existia nessa data (ex: SELIC Meta antes de 1999)
-        if e.response is not None and e.response.status_code == 404:
-            logger.warning(f"Série {series_code} não existia (404) no período {str_start} a {str_end}. Ignorando com segurança.")
-            return pd.DataFrame(columns=["data", "valor"])
-        logger.error(f"Erro HTTP na série {series_code} do BCB: {e}")
-        raise RuntimeError(f"Erro de comunicação HTTP {e.response.status_code if e.response is not None else '?'} com o Banco Central.")
-    except requests.exceptions.Timeout:
-        logger.error(f"Timeout ao consultar a série {series_code} do BCB no período {str_start} a {str_end}")
-        raise RuntimeError("O servidor do Banco Central demorou muito para responder. Tente novamente mais tarde.")
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Erro na requisição da série {series_code} do BCB: {e}")
-        raise RuntimeError(f"Falha na comunicação com o Banco Central: {e}")
-    except Exception as e:
-        logger.error(f"Erro inesperado ao buscar dados do BCB: {e}")
-        raise RuntimeError(f"Erro ao processar dados do Banco Central: {e}")
+
+    last_error: Exception | None = None
+
+    for attempt in range(1, _MAX_RETRIES + 1):
+        try:
+            response = requests.get(url, timeout=20, headers=_HEADERS)
+            response.raise_for_status()
+            data = response.json()
+
+            if not data:
+                logger.warning(f"Série {series_code} não retornou dados para {str_start} a {str_end}")
+                return pd.DataFrame(columns=["data", "valor"])
+
+            return pd.DataFrame(data)
+
+        except requests.exceptions.HTTPError as e:
+            # 404 = série não existia nessa data (ex: SELIC Meta antes de 1999) — não retentar
+            if e.response is not None and e.response.status_code == 404:
+                logger.warning(f"Série {series_code} não existia (404) em {str_start}–{str_end}. Ignorando.")
+                return pd.DataFrame(columns=["data", "valor"])
+            logger.error(f"Erro HTTP na série {series_code} do BCB: {e}")
+            raise RuntimeError(
+                f"Erro HTTP {e.response.status_code if e.response is not None else '?'} com o Banco Central."
+            )
+
+        except requests.exceptions.Timeout:
+            last_error = RuntimeError("O servidor do Banco Central demorou muito para responder.")
+            logger.warning(f"Timeout (tentativa {attempt}/{_MAX_RETRIES}) série {series_code} {str_start}–{str_end}")
+
+        except requests.exceptions.RequestException as e:
+            last_error = RuntimeError(f"Falha na comunicação com o Banco Central: {e}")
+            logger.warning(f"Erro de rede (tentativa {attempt}/{_MAX_RETRIES}) série {series_code}: {e}")
+
+        except Exception as e:
+            logger.error(f"Erro inesperado ao buscar dados do BCB: {e}")
+            raise RuntimeError(f"Erro ao processar dados do Banco Central: {e}")
+
+        if attempt < _MAX_RETRIES:
+            wait = 2 ** (attempt - 1)  # 1s → 2s
+            logger.info(f"Aguardando {wait}s antes da tentativa {attempt + 1}...")
+            time.sleep(wait)
+
+    raise last_error  # type: ignore[misc]
 
 def get_bcb_series(series_code: int, start_date_str: str, end_date_str: Optional[str] = None) -> pd.DataFrame:
     """
