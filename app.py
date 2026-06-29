@@ -42,9 +42,8 @@ CACHE_WAGE = os.path.join(CACHE_DIR, "cache_wage.csv")
 
 # Sistema visual: "Jornal do Real" — verde floresta + dourado + tipografia editorial
 st.markdown("""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,700;0,9..144,900;1,9..144,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=IBM+Plex+Mono:wght@400;600&display=swap');
-        @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fraunces:ital,opsz,wght@0,9..144,700;0,9..144,900;1,9..144,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
 
         @keyframes pulse-dot {
             0%, 100% { opacity: 1;   transform: scale(1.0); }
@@ -71,9 +70,14 @@ st.markdown("""
             --dim:          #435E4A;
         }
 
-        /* Fundo global */
-        html, .stApp, [data-testid="stAppViewContainer"] {
+        /* Fundo global + previne scroll horizontal */
+        html, body {
             background-color: var(--bg-deep) !important;
+            overflow-x: hidden !important;
+        }
+        .stApp, [data-testid="stAppViewContainer"] {
+            background-color: var(--bg-deep) !important;
+            overflow-x: hidden !important;
         }
 
         /* Tipografia global */
@@ -91,24 +95,128 @@ st.markdown("""
             color: #EDE8D8 !important;
         }
 
-        /* Sidebar */
-        [data-testid="stSidebar"] {
+        /* ═══ SIDEBAR — Refatoração completa ═══ */
+
+        /* Sidebar FIXA — sempre visível, sem colapso em nenhuma condição */
+        section[data-testid="stSidebar"] {
             background-color: #060E09 !important;
             border-right: 1px solid var(--border-sub) !important;
-            width: 265px !important;
-            min-width: 265px !important;
+            overflow-x: hidden !important;
+            box-sizing: border-box !important;
+            /* Bloqueia qualquer tentativa do Streamlit de colapsar */
+            display: block !important;
+            visibility: visible !important;
+            transform: none !important;
+            min-width: 244px !important;
+            flex-shrink: 0 !important;
+            transition: none !important;
+            position: relative !important;
         }
-        [data-testid="stSidebar"] p,
-        [data-testid="stSidebar"] span,
-        [data-testid="stSidebar"] li {
+        /* Quando Streamlit injeta transform inline ou aria-expanded="false" */
+        section[data-testid="stSidebar"][aria-expanded="false"],
+        section[data-testid="stSidebar"][style*="transform"],
+        section[data-testid="stSidebar"][style*="width: 0"] {
+            transform: none !important;
+            min-width: 244px !important;
+            width: 244px !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+
+        /* Área de conteúdo interna */
+        section[data-testid="stSidebar"] > div,
+        section[data-testid="stSidebar"] [data-testid="stSidebarContent"] {
+            overflow-x: hidden !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
+        }
+
+        /* Block container da sidebar — padding controlado */
+        section[data-testid="stSidebar"] .block-container {
+            padding: 1.25rem 0.875rem !important;
+            overflow-x: hidden !important;
+            box-sizing: border-box !important;
+            max-width: 100% !important;
+        }
+
+        /* Box-sizing universal na sidebar — previne overflow */
+        section[data-testid="stSidebar"] * {
+            box-sizing: border-box !important;
+        }
+
+        /* Colunas internas (date range customizado) — fix do scroll horizontal */
+        section[data-testid="stSidebar"] [data-testid="column"] {
+            min-width: 0 !important;
+            overflow: hidden !important;
+            flex-shrink: 1 !important;
+        }
+
+        /* Date inputs compactos dentro das colunas */
+        section[data-testid="stSidebar"] [data-testid="stDateInput"],
+        section[data-testid="stSidebar"] [data-testid="stDateInput"] > div {
+            width: 100% !important;
+        }
+        section[data-testid="stSidebar"] [data-testid="stDateInput"] input {
+            font-size: 12px !important;
+            padding: 4px 6px !important;
+        }
+
+        /* Tipografia da sidebar */
+        section[data-testid="stSidebar"] p,
+        section[data-testid="stSidebar"] li {
             color: var(--muted) !important;
             font-size: 13px !important;
+            line-height: 1.55 !important;
         }
-        [data-testid="stSidebar"] a { color: var(--gold) !important; }
-        [data-testid="stSidebar"] h2,
-        [data-testid="stSidebar"] h3 {
+        section[data-testid="stSidebar"] a { color: var(--gold) !important; }
+        section[data-testid="stSidebar"] h2,
+        section[data-testid="stSidebar"] h3 {
             color: var(--cream) !important;
             font-size: 14px !important;
+        }
+
+        /* Scrollbar discreta (apenas vertical) */
+        section[data-testid="stSidebar"]::-webkit-scrollbar { width: 3px; }
+        section[data-testid="stSidebar"]::-webkit-scrollbar-track { background: transparent; }
+        section[data-testid="stSidebar"]::-webkit-scrollbar-thumb {
+            background: rgba(244,193,0,0.15); border-radius: 2px;
+        }
+
+        /* Sidebar sempre visível — header e todos os toggles de colapso ocultos */
+        header,
+        [data-testid="stHeader"],
+        [data-testid="stDecoration"],
+        [data-testid="stStatusWidget"],
+        [data-testid="collapsedControl"] {
+            display: none !important;
+        }
+
+        /* Botão de colapso — cobertura total de seletores por versão do Streamlit
+           Inclui kind="icon" que aparece no hover e não estava coberto */
+        button[data-testid="stSidebarCollapseButton"],
+        [data-testid="stSidebarCollapseButton"],
+        section[data-testid="stSidebar"] button[kind="header"],
+        section[data-testid="stSidebar"] button[kind="icon"],
+        section[data-testid="stSidebar"]:hover button[data-testid="stSidebarCollapseButton"],
+        section[data-testid="stSidebar"]:hover button[kind="header"],
+        section[data-testid="stSidebar"]:hover button[kind="icon"],
+        section[data-testid="stSidebar"] button:has(.material-symbols-rounded),
+        section[data-testid="stSidebar"]:hover button:has(.material-symbols-rounded) {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            overflow: hidden !important;
+            clip-path: inset(50%) !important;
+        }
+
+        /* Remove espaço reservado ao header */
+        .block-container {
+            padding-top: 1rem !important;
         }
 
         /* Cards de métricas — estilo editorial com topo dourado */
@@ -336,6 +444,25 @@ st.markdown("""
         }
         .compare-box p { font-size: 14px !important; line-height: 1.6 !important;
                          color: var(--cream) !important; margin: 5px 0 0 0 !important; }
+
+
+        /* Responsividade — notebook e telas menores */
+        @media (max-width: 1280px) {
+            .block-container {
+                padding-left: 1.5rem !important;
+                padding-right: 1.5rem !important;
+            }
+        }
+        @media (max-width: 900px) {
+            .block-container {
+                padding-left: 1rem !important;
+                padding-right: 1rem !important;
+                padding-top: 0.75rem !important;
+            }
+            div[data-testid="stMetricValue"] {
+                font-size: 18px !important;
+            }
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -451,19 +578,25 @@ def load_food_inflation_data() -> tuple[pd.DataFrame, bool]:
 
 # ----------------- MASTHEAD -----------------
 st.markdown("""
-<div style="border-bottom:1.5px solid #F4C100; padding:8px 0 18px 0; margin-bottom:28px; animation:fade-in-up 0.4s ease both;">
-<div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px;">
-<div>
-<div style="font-family:'Fraunces',Georgia,serif; font-size:clamp(28px,4vw,44px); font-weight:900; letter-spacing:-3px; line-height:1; margin:0 0 10px 0; overflow:visible; padding-right:8px; background:linear-gradient(100deg,#F4C100 0%,#FFD84D 45%,#C8920A 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">REAL ANALYTICS</div>
-<div style="font-family:'DM Sans',system-ui,sans-serif; font-size:10px; font-weight:600; color:#7A9E85; text-transform:uppercase; letter-spacing:0.22em; margin:0;">Monitor histórico &nbsp;·&nbsp; Inflação &nbsp;·&nbsp; Câmbio &nbsp;·&nbsp; Poder de Compra &nbsp;·&nbsp; Plano Real (1994–Hoje)</div>
-</div>
-<div style="text-align:right; padding-bottom:2px;">
-<div style="display:flex; align-items:center; gap:7px; justify-content:flex-end; margin-bottom:5px;">
-<span style="width:7px; height:7px; border-radius:50%; background:#00C48C; display:inline-block; animation:pulse-dot 2s ease-in-out infinite;"></span>
+<div style="border-bottom:1.5px solid #F4C100; padding:16px 0 14px 0; margin-bottom:28px; text-align:center; animation:fade-in-up 0.4s ease both; max-width:100%; overflow:hidden;">
+<svg viewBox="0 0 820 72" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:0 auto;width:100%;max-width:620px;height:auto;">
+<defs>
+<linearGradient id="titleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+<stop offset="0%" stop-color="#F4C100"/>
+<stop offset="40%" stop-color="#FFD84D"/>
+<stop offset="100%" stop-color="#C8920A"/>
+</linearGradient>
+</defs>
+<text x="410" y="58" text-anchor="middle" font-family="'Bebas Neue',Impact,sans-serif" font-size="64" fill="url(#titleGrad)" letter-spacing="10">REAL ANALYTICS</text>
+</svg>
+<div style="font-family:'DM Sans',system-ui,sans-serif; font-size:10px; font-weight:600; color:#7A9E85; text-transform:uppercase; letter-spacing:0.20em; margin:8px 0 10px 0;">Monitor histórico &nbsp;·&nbsp; Inflação &nbsp;·&nbsp; Câmbio &nbsp;·&nbsp; Poder de Compra &nbsp;·&nbsp; Plano Real (1994–Hoje)</div>
+<div style="display:flex; align-items:center; justify-content:center; gap:20px; flex-wrap:wrap;">
+<div style="display:flex; align-items:center; gap:6px;">
+<span style="width:6px; height:6px; border-radius:50%; background:#00C48C; display:inline-block; animation:pulse-dot 2s ease-in-out infinite;"></span>
 <span style="font-family:'DM Sans',system-ui,sans-serif; font-size:10px; color:#00C48C; font-weight:700; text-transform:uppercase; letter-spacing:0.10em;">Dados em tempo real</span>
 </div>
-<div style="font-family:'IBM Plex Mono',monospace; font-size:10px; color:#435E4A; line-height:1.8;">Fontes: BCB &nbsp;·&nbsp; IBGE &nbsp;·&nbsp; IPEA &nbsp; 🇧🇷</div>
-</div>
+<span style="color:#435E4A; font-size:12px;">·</span>
+<div style="font-family:'IBM Plex Mono',monospace; font-size:10px; color:#435E4A;">BCB &nbsp;·&nbsp; IBGE &nbsp;·&nbsp; IPEA &nbsp;🇧🇷</div>
 </div>
 </div>
 """, unsafe_allow_html=True)
