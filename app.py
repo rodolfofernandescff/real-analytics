@@ -44,6 +44,7 @@ CACHE_WAGE = os.path.join(CACHE_DIR, "cache_wage.csv")
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,700;0,9..144,900;1,9..144,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=IBM+Plex+Mono:wght@400;600&display=swap');
+        @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 
         @keyframes pulse-dot {
             0%, 100% { opacity: 1;   transform: scale(1.0); }
@@ -453,7 +454,7 @@ st.markdown("""
 <div style="border-bottom:1.5px solid #F4C100; padding:8px 0 18px 0; margin-bottom:28px; animation:fade-in-up 0.4s ease both;">
 <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px;">
 <div>
-<div style="font-family:'Fraunces',Georgia,serif; font-size:46px; font-weight:900; letter-spacing:-3px; line-height:1; margin:0 0 10px 0; background:linear-gradient(100deg,#F4C100 0%,#FFD84D 45%,#C8920A 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">REAL ANALYTICS</div>
+<div style="font-family:'Fraunces',Georgia,serif; font-size:clamp(28px,4vw,44px); font-weight:900; letter-spacing:-3px; line-height:1; margin:0 0 10px 0; overflow:visible; padding-right:8px; background:linear-gradient(100deg,#F4C100 0%,#FFD84D 45%,#C8920A 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">REAL ANALYTICS</div>
 <div style="font-family:'DM Sans',system-ui,sans-serif; font-size:10px; font-weight:600; color:#7A9E85; text-transform:uppercase; letter-spacing:0.22em; margin:0;">Monitor histórico &nbsp;·&nbsp; Inflação &nbsp;·&nbsp; Câmbio &nbsp;·&nbsp; Poder de Compra &nbsp;·&nbsp; Plano Real (1994–Hoje)</div>
 </div>
 <div style="text-align:right; padding-bottom:2px;">
